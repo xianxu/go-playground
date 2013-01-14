@@ -27,7 +27,6 @@ var (
 
 type ServerState struct {
 	countService rpcx.Service
-	timeout      time.Duration
 }
 
 // The actual tweetbutton count logic
@@ -84,7 +83,8 @@ func (s *ServerState) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}}
 
 	var rsp gassandra.CassandraGetResponse
-	err = s.countService.Serve(&req, &rsp, s.timeout)
+	//TODO: timeout and cancel?
+	err = s.countService.Serve(&req, &rsp, nil)
 
 	if err != nil {
 		w.WriteHeader(503)
@@ -102,19 +102,19 @@ func (s *ServerState) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-func makeSingle(host string) gassandra.Keyspace {
+func makeSingle(host string, timeout time.Duration) gassandra.Keyspace {
 	hostPort := host
 	if !strings.Contains(host, ":") {
 		hostPort = host + ":9160"
 	}
-	return gassandra.Keyspace{hostPort, "RB"}
+	return gassandra.Keyspace{hostPort, "RB", timeout}
 }
-func makeAll(hostsString string) []rpcx.ServiceMaker {
+func makeAll(hostsString string, timeout time.Duration) []rpcx.ServiceMaker {
 	hosts := strings.Split(hostsString, ",")
 
 	ks := make([]rpcx.ServiceMaker, len(hosts))
 	for i, host := range hosts {
-		ks[i] = makeSingle(host)
+		ks[i] = makeSingle(host, timeout)
 	}
 
 	return ks
@@ -127,13 +127,13 @@ func main() {
 
 	conf := rpcx.ReliableServiceConf{
 		Name:        "tweetbutton",
-		Makers:      makeAll(*cassandras),
+		Makers:      makeAll(*cassandras, *cassandraTimeout),
 		Concurrency: *concurrency,
 		Stats:       gostrich.AdminServer().GetStats(),
 	}
 	cas := rpcx.NewReliableService(conf)
 
-	state := ServerState{cas, *cassandraTimeout}
+	state := ServerState{cas}
 
 	server := http.Server{
 		newBinding,
