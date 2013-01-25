@@ -6,7 +6,6 @@ import (
 	"github.com/xianxu/gassandra"
 	"github.com/xianxu/gostrich"
 	"github.com/xianxu/rpcx"
-	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -20,9 +19,11 @@ var (
 	cassandras       = flag.String("cassandras", "localhost:9160", "Cassandra hosts to use")
 	cassandraTimeout = flag.Duration("cassandra_timeout", 3*time.Second, "Cassandra timeout")
 	concurrency      = flag.Int("concurrency", 5, "How many Cassandra connection to open per Cassandra host")
+	retries          = flag.Int("retries", 2, "Number of retries in case of failure at cluter level")
 
 	// intervals
 	path = &gassandra.ColumnPath{"SUM_ALLTIME", nil, []byte{0, 0, 0, 0, 0, 0, 0, 0}}
+	logger = gostrich.NamedLogger { "[TBAPI]" }
 )
 
 type ServerState struct {
@@ -128,8 +129,9 @@ func main() {
 	conf := rpcx.ReliableServiceConf{
 		Name:        "tweetbutton",
 		Makers:      makeAll(*cassandras, *cassandraTimeout),
+		Retries: 	 *retries,
 		Concurrency: *concurrency,
-		Stats:       gostrich.AdminServer().GetStats(),
+		Stats:       gostrich.AdminServer().GetStats().Scoped("tbapi"),
 	}
 	cas := rpcx.NewReliableService(conf)
 
@@ -143,9 +145,9 @@ func main() {
 		0,
 		nil,
 	}
-	log.Printf("Tweetbutton starting up...\n")
+	logger.LogInfo("Tweetbutton starting up...\n")
 	go func() {
-		log.Fatal(server.ListenAndServe())
+		logger.LogInfo(server.ListenAndServe())
 	}()
 
 	gostrich.StartToLive(nil)
