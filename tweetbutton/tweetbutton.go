@@ -18,7 +18,7 @@ var (
 	binding          = flag.String("binding", ":8888", "Binding to serve tweetbutton count traffic")
 	cassandras       = flag.String("cassandras", "localhost:9160", "Cassandra hosts to use")
 	cassandraTimeout = flag.Duration("cassandra_timeout", 3*time.Second, "Cassandra timeout")
-	concurrency      = flag.Int("concurrency", 5, "How many Cassandra connection to open per Cassandra host")
+	concurrency      = flag.Int("concurrency", 1, "How many Cassandra connection to open per Cassandra host")
 	retries          = flag.Int("retries", 2, "Number of retries in case of failure at cluter level")
 
 	// intervals
@@ -132,6 +132,7 @@ func main() {
 		Retries: 	 *retries,
 		Concurrency: *concurrency,
 		Stats:       gostrich.AdminServer().GetStats().Scoped("tbapi"),
+		Prober:      rpcx.ProberReqLastFail,
 	}
 	cas := rpcx.NewReliableService(conf)
 
