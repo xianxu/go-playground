@@ -22,8 +22,8 @@ var (
 	retries          = flag.Int("retries", 2, "Number of retries in case of failure at cluter level")
 
 	// intervals
-	path = &gassandra.ColumnPath{"SUM_ALLTIME", nil, []byte{0, 0, 0, 0, 0, 0, 0, 0}}
-	logger = gostrich.NamedLogger { "[TBAPI]" }
+	path   = &gassandra.ColumnPath{"SUM_ALLTIME", nil, []byte{0, 0, 0, 0, 0, 0, 0, 0}}
+	logger = gostrich.NamedLogger{"[TBAPI]"}
 )
 
 type ServerState struct {
@@ -129,7 +129,7 @@ func main() {
 	conf := rpcx.ReliableServiceConf{
 		Name:        "tweetbutton",
 		Makers:      makeAll(*cassandras, *cassandraTimeout),
-		Retries: 	 *retries,
+		Retries:     *retries,
 		Concurrency: *concurrency,
 		Stats:       gostrich.AdminServer().GetStats().Scoped("tbapi"),
 		Prober:      rpcx.ProberReqLastFail,
